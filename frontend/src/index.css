@@ -1,0 +1,27 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Futuristic Sci-Fi CSS Variables and Base Reset */
+:root {
+  --bg-color: #050a18;
+  --bg-card: rgba(11, 22, 47, 0.65);
+  --text-primary: #e2e8f0;
+  --text-secondary: #00f0ff;
+  --text-muted: #64748b;
+  --cyan-glow: #00f0ff;
+  --purple-glow: #bd00ff;
+  --neon-green: #39ff14;
+  --neon-orange: #ff5e00;
+  --neon-red: #ff0055;
+  --border-color: rgba(0, 240, 255, 0.15);
+  --border-hover: rgba(0, 240, 255, 0.4);
+  --font-mono: 'Share Tech Mono', monospace;
+}
+
+body {
+  margin: 0;
+  background-color: var(--bg-color);
+  color: var(--text-primary);
+  font-family: 'Inter', system-ui, sans-serif;
+}
