@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Search, MapPin, Droplets, Cloud, Compass, AlertCircle } from "lucide-react";
 import image from '../assets/image.png';
+import natureBg from '../assets/Nature.jpg';
 
 function RainCanvas() {
   const canvasRef = useRef(null);
@@ -95,6 +96,10 @@ export default function RainyScene() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
+  // True ONLY when data is loaded AND probability is <= 60 (sunny/clear mode)
+  // Default (no data) shows rainy UI
+  const isSunny = weatherData !== null && weatherData.prediction.probability <= 60;
+
   const handlePredict = async (e) => {
     e.preventDefault();
     if (!inputCity.trim()) return;
@@ -130,40 +135,121 @@ export default function RainyScene() {
       }}
     >
       <div style={{ position: "relative", width: "100%", height: "100%" }}>
-        {/* Background Road Image */}
+
+        {/* Rainy background — fades out when sunny */}
         <img
           src={image}
           alt="Rainy countryside road"
           onLoad={() => setLoaded(true)}
           style={{
+            position: "absolute",
+            inset: 0,
             width: "100%",
             height: "100%",
             objectFit: "cover",
             objectPosition: "center",
             filter: "brightness(0.6) saturate(0.9) contrast(1.04)",
             display: "block",
+            opacity: isSunny ? 0 : 1,
+            transition: "opacity 1.2s ease",
           }}
         />
 
-        {/* Overcast blue tint overlay */}
+        {/* Sunny background — fades in when sunny */}
+        <img
+          src={natureBg}
+          alt="Sunny nature background"
+          style={{
+            position: "absolute",
+            inset: 0,
+            width: "100%",
+            height: "100%",
+            objectFit: "cover",
+            objectPosition: "center",
+            filter: "brightness(0.85) saturate(1.1) contrast(1.0)",
+            display: "block",
+            opacity: isSunny ? 1 : 0,
+            transition: "opacity 1.2s ease",
+          }}
+        />
+
+        {/* Colour tint overlay — fades between warm (sunny) and blue-grey (rainy) */}
         <div
           style={{
             position: "absolute",
             inset: 0,
-            background: "rgba(30, 50, 75, 0.2)",
+            background: isSunny
+              ? "rgba(255, 220, 120, 0.04)"
+              : "rgba(30, 50, 75, 0.2)",
             pointerEvents: "none",
+            transition: "background 1.2s ease",
           }}
         />
 
-        {/* Canvas animated raindrops overlay */}
-        {loaded && <RainCanvas />}
+        {/* Animated raindrops — fades out when switching to sunny mode */}
+        <div
+          style={{
+            position: "absolute",
+            inset: 0,
+            opacity: isSunny ? 0 : 1,
+            transition: "opacity 1.2s ease",
+            pointerEvents: "none",
+          }}
+        >
+          {loaded && <RainCanvas />}
+        </div>
 
-        {/* GLASSMORPHIC CONTAINER CARD OVERLAY */}
+        {/* GLASSMORPHIC CARD OVERLAY */}
         <div className="absolute inset-0 flex items-center justify-center p-4">
-          <div className="w-full max-w-md backdrop-blur-xl bg-zinc-950/40 border border-white/10 rounded-3xl p-6 shadow-[0_8px_32px_0_rgba(0,0,0,0.5)] text-white flex flex-col gap-6">
-            
-            {/* Search Section */}
-            <form onSubmit={handlePredict} className="flex gap-2">
+          <div
+            className={`w-full max-w-md rounded-3xl p-6 text-white flex flex-col gap-6 relative ${
+              isSunny
+                ? "backdrop-blur-2xl bg-white/[0.13] border border-white/[0.38]"
+                : "backdrop-blur-xl bg-zinc-950/40 border border-white/10"
+            }`}
+            style={{
+              boxShadow: "0 8px 32px 0 rgba(0,0,0,0.5)",
+              transition: "background-color 1.2s ease, border-color 1.2s ease, backdrop-filter 1.2s ease",
+            }}
+          >
+
+            {/* Animated sun + cloud decoration — only shown in sunny mode */}
+            {isSunny && (
+              <div style={{ position: "absolute", top: -18, left: 14, width: 100, height: 72, pointerEvents: "none" }}>
+                <svg viewBox="0 0 100 72" fill="none" xmlns="http://www.w3.org/2000/svg" width="100" height="72">
+                  {/* Sun body */}
+                  <circle cx="32" cy="38" r="14" fill="#FFD93D" opacity="0.95" />
+                  {/* Sun rays */}
+                  {[0, 45, 90, 135, 180, 225, 270, 315].map((angle, i) => (
+                    <g key={i}>
+                      <line
+                        x1="32" y1="20" x2="32" y2="15"
+                        stroke="#FFD93D" strokeWidth="2.5" strokeLinecap="round"
+                        opacity="0.75"
+                        transform={`rotate(${angle} 32 38)`}
+                      >
+                        <animateTransform
+                          attributeName="transform"
+                          type="rotate"
+                          from={`${angle} 32 38`}
+                          to={`${angle + 360} 32 38`}
+                          dur="14s"
+                          repeatCount="indefinite"
+                        />
+                      </line>
+                    </g>
+                  ))}
+                  {/* Cloud shapes */}
+                  <ellipse cx="70" cy="50" rx="18" ry="11" fill="white" opacity="0.92" />
+                  <ellipse cx="59" cy="53" rx="13" ry="9" fill="white" opacity="0.92" />
+                  <ellipse cx="82" cy="54" rx="11" ry="8" fill="white" opacity="0.88" />
+                  <ellipse cx="68" cy="43" rx="12" ry="9" fill="white" opacity="0.85" />
+                </svg>
+              </div>
+            )}
+
+            {/* Search form — pushed down in sunny mode to clear the SVG decoration */}
+            <form onSubmit={handlePredict} className={`flex gap-2 ${isSunny ? "mt-7" : ""}`}>
               <input
                 type="text"
                 value={inputCity}
@@ -191,6 +277,7 @@ export default function RainyScene() {
             {/* Weather Metrics display */}
             {weatherData ? (
               <div className="flex flex-col gap-5">
+
                 {/* Location & Temp */}
                 <div className="flex justify-between items-start">
                   <div>
@@ -207,16 +294,16 @@ export default function RainyScene() {
                 </div>
 
                 {/* Prediction Output */}
-                <div 
-                  className="rounded-2xl p-4 flex flex-col gap-2 border" 
-                  style={{ 
-                    backgroundColor: `${weatherData.prediction.color}15`, 
-                    borderColor: `${weatherData.prediction.color}40` 
+                <div
+                  className="rounded-2xl p-4 flex flex-col gap-2 border"
+                  style={{
+                    backgroundColor: `${weatherData.prediction.color}15`,
+                    borderColor: `${weatherData.prediction.color}40`
                   }}
                 >
                   <div className="flex justify-between items-center">
                     <span className="text-xs font-semibold uppercase tracking-wider text-white/70">Rain Probability</span>
-                    <span 
+                    <span
                       className="text-lg font-bold"
                       style={{ color: weatherData.prediction.color }}
                     >
@@ -225,11 +312,11 @@ export default function RainyScene() {
                   </div>
                   {/* Visual Progress Bar */}
                   <div className="w-full h-2 bg-white/5 rounded-full overflow-hidden">
-                    <div 
+                    <div
                       className="h-full rounded-full transition-all duration-1000"
-                      style={{ 
-                        width: `${weatherData.prediction.probability}%`, 
-                        backgroundColor: weatherData.prediction.color 
+                      style={{
+                        width: `${weatherData.prediction.probability}%`,
+                        backgroundColor: weatherData.prediction.color
                       }}
                     />
                   </div>
@@ -256,6 +343,7 @@ export default function RainyScene() {
                     <span className="font-semibold">{weatherData.clouds}%</span>
                   </div>
                 </div>
+
               </div>
             ) : (
               <div className="h-44 flex flex-col items-center justify-center text-center text-white/40">
