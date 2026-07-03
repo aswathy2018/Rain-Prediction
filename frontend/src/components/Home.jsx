@@ -96,8 +96,6 @@ export default function RainyScene() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
-  // True ONLY when data is loaded AND probability is <= 60 (sunny/clear mode)
-  // Default (no data) shows rainy UI
   const isSunny = weatherData !== null && weatherData.prediction.probability <= 60;
 
   const handlePredict = async (e) => {
