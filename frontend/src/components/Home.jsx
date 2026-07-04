@@ -92,9 +92,33 @@ function RainCanvas() {
 export default function RainyScene() {
   const [loaded, setLoaded] = useState(false);
   const [inputCity, setInputCity] = useState("");
+  const [suggestions, setSuggestions] = useState([]);
+  const [showSuggestions, setShowSuggestions] = useState(false);
   const [weatherData, setWeatherData] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+
+  useEffect(() => {
+    const fetchCities = async () => {
+      if (inputCity.length < 2) {
+        setSuggestions([]);
+        return;
+      }
+      try {
+        const res = await fetch(`https://geocoding-api.open-meteo.com/v1/search?name=${inputCity}&count=5&language=en&format=json`);
+        const data = await res.json();
+        if (data.results) {
+          setSuggestions(data.results);
+        } else {
+          setSuggestions([]);
+        }
+      } catch (err) {
+        console.error("Error fetching cities:", err);
+      }
+    };
+    const timeoutId = setTimeout(fetchCities, 300);
+    return () => clearTimeout(timeoutId);
+  }, [inputCity]);
 
   const isSunny = weatherData !== null && weatherData.prediction.probability <= 60;
 
@@ -248,21 +272,98 @@ export default function RainyScene() {
 
             {/* Search form — pushed down in sunny mode to clear the SVG decoration */}
             <form onSubmit={handlePredict} className={`flex gap-2 ${isSunny ? "mt-7" : ""}`}>
-              <input
-                type="text"
-                value={inputCity}
-                onChange={(e) => setInputCity(e.target.value)}
-                placeholder="Enter City (e.g. London)..."
-                className="flex-grow bg-white/10 border border-white/10 text-sm rounded-2xl py-2.5 px-4 text-white placeholder-white/50 focus:outline-none focus:border-white/30 backdrop-blur-sm"
-              />
+              <div className="relative flex-grow">
+                <input
+                  type="text"
+                  value={inputCity}
+                  onChange={(e) => {
+                    setInputCity(e.target.value);
+                    setShowSuggestions(true);
+                  }}
+                  onFocus={() => {
+                    if (inputCity.length >= 2) setShowSuggestions(true);
+                  }}
+                  onBlur={() => setTimeout(() => setShowSuggestions(false), 200)}
+                  placeholder="Enter City (e.g. London)..."
+                  className="w-full bg-white/10 border border-white/10 text-sm rounded-2xl py-2.5 px-4 text-white placeholder-white/50 focus:outline-none focus:border-white/30 backdrop-blur-sm"
+                />
+                
+                {/* Autosuggestions Dropdown */}
+                {showSuggestions && suggestions.length > 0 && (
+                  <ul 
+                    className="absolute z-50 w-full mt-3 bg-black/60 backdrop-blur-2xl border border-white/20 rounded-2xl shadow-[0_8px_32px_0_rgba(0,0,0,0.5)] overflow-hidden max-h-60 overflow-y-auto"
+                    style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
+                  >
+                    {suggestions.map((city, index) => (
+                      <li
+                        key={city.id}
+                        onClick={() => {
+                          setInputCity(`${city.name}, ${city.country}`);
+                          setShowSuggestions(false);
+                        }}
+                        className={`px-4 py-3 cursor-pointer transition-all duration-200 flex items-center gap-3 text-white
+                          ${index !== suggestions.length - 1 ? 'border-b border-white/5' : ''}
+                          hover:bg-white/15 hover:pl-5`}
+                      >
+                        <div className="bg-white/10 p-2 rounded-full shrink-0">
+                          <MapPin size={14} className="text-white/80" />
+                        </div>
+                        <div className="flex flex-col">
+                          <span className="font-semibold text-sm tracking-wide">{city.name}</span>
+                          <span className="text-[11px] text-white/60 font-medium">
+                            {city.admin1 ? `${city.admin1}, ` : ''}{city.country}
+                          </span>
+                        </div>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
               <button
                 type="submit"
                 disabled={loading}
-                className="p-3 bg-white/20 hover:bg-white/30 active:bg-white/10 border border-white/10 rounded-2xl flex items-center justify-center transition"
+                className="p-3 bg-white/20 hover:bg-white/30 active:bg-white/10 border border-white/10 rounded-2xl flex items-center justify-center transition shrink-0"
               >
                 <Search size={18} />
               </button>
             </form>
+
+            {/* Rain Reminder */}
+            {/* {weatherData && weatherData.prediction.probability >= 60 && (
+              <div className="text-center">
+                <p
+                  className="text-white text-lg font-medium tracking-wide italic"
+                  style={{
+                    fontFamily: "'Trebuchet MS', 'Segoe UI', sans-serif",
+                    textShadow: "0 0 10px rgba(255,255,255,0.35)",
+                  }}
+                >
+                  Don't forget your umbrella!
+                </p>
+              </div>
+            )} */}
+
+            {/* Rain Reminder */}
+            {weatherData && weatherData.prediction.probability >= 60 && (
+              <div className="flex justify-center">
+                <div
+                  className="px-4 py-2 rounded-full bg-white/10 border border-white/15"
+                  style={{
+                    backdropFilter: "blur(10px)",
+                  }}
+                >
+                  <p
+                    className="text-white text-sm tracking-wider uppercase"
+                    style={{
+                      letterSpacing: "1.5px",
+                      fontWeight: 600,
+                    }}
+                  >
+                    Don't forget your umbrella!
+                  </p>
+                </div>
+              </div>
+            )}
 
             {/* Error Message */}
             {error && (
@@ -346,8 +447,8 @@ export default function RainyScene() {
             ) : (
               <div className="h-44 flex flex-col items-center justify-center text-center text-white/40">
                 <Cloud size={32} className="animate-bounce mb-2" />
-                <p className="text-sm font-medium">No telemetry loaded</p>
-                <p className="text-[11px] text-white/30 mt-1">Submit a city above to inspect atmospheric rain index</p>
+                <p className="text-sm font-medium">Let's check the skies..</p>
+                <p className="text-[11px] text-white/30 mt-1">Drop a city name above, and I'll tell you if you need to grab an umbrella or if you're good to leave it behind.</p>
               </div>
             )}
 
